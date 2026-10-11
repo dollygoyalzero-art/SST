@@ -1,0 +1,11 @@
+{
+  "name": "Student Success Tracker - Meccademia",
+  "description": "Comprehensive Student Success Tracker for Meecademia Education Institute: personalized study schedules, weekly & monthly targets, faculty mentorship, analytics, AI audio recommendations, and gamified leaderboards.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
