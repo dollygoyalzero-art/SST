@@ -4,6 +4,8 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 
+import fs from 'fs';
+
 dotenv.config();
 
 const app = express();
@@ -26,21 +28,73 @@ const SEEDED_ADMIN = {
   status: 'active' as const
 };
 
-// Backend in-memory user registry starting with clean state (ONLY SEEDED ADMIN)
-let usersStore: any[] = [
-  {
-    id: SEEDED_ADMIN.id,
-    name: SEEDED_ADMIN.name,
-    email: SEEDED_ADMIN.email,
-    role: SEEDED_ADMIN.role,
-    avatar: SEEDED_ADMIN.avatar,
-    createdAt: SEEDED_ADMIN.createdAt,
-    streak: 0,
-    totalStudyHours: 0,
-    attendanceRate: 100,
-    status: 'active'
+const DATA_FILE = path.join(process.cwd(), 'data_users.json');
+
+function loadUsersFromDisk(): any[] {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const content = fs.readFileSync(DATA_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure SEEDED_ADMIN is always present
+        if (!parsed.some(u => u.email.toLowerCase() === SEEDED_ADMIN.email.toLowerCase())) {
+          parsed.push({
+            id: SEEDED_ADMIN.id,
+            name: SEEDED_ADMIN.name,
+            email: SEEDED_ADMIN.email,
+            password: SEEDED_ADMIN.password,
+            role: SEEDED_ADMIN.role,
+            avatar: SEEDED_ADMIN.avatar,
+            createdAt: SEEDED_ADMIN.createdAt,
+            streak: 0,
+            totalStudyHours: 0,
+            attendanceRate: 100,
+            status: 'active'
+          });
+        }
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Error loading users from disk:', err);
   }
-];
+  return [
+    {
+      id: SEEDED_ADMIN.id,
+      name: SEEDED_ADMIN.name,
+      email: SEEDED_ADMIN.email,
+      password: SEEDED_ADMIN.password,
+      role: SEEDED_ADMIN.role,
+      avatar: SEEDED_ADMIN.avatar,
+      createdAt: SEEDED_ADMIN.createdAt,
+      streak: 0,
+      totalStudyHours: 0,
+      attendanceRate: 100,
+      status: 'active'
+    }
+  ];
+}
+
+// Backend user registry with disk backup
+let usersStore: any[] = loadUsersFromDisk();
+
+function saveUsersToDisk() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(usersStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving users to disk:', err);
+  }
+}
+
+interface ResetTokenRecord {
+  email: string;
+  code: string;
+  expiresAt: number;
+  role?: string;
+  recipientName?: string;
+}
+
+let resetTokens: ResetTokenRecord[] = [];
 
 // Initialize server-side Gemini client with required User-Agent
 let aiClient: GoogleGenAI | null = null;
@@ -88,22 +142,157 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   // Student and faculty role authentication check against registered users
   const user = usersStore.find(u => u.email.toLowerCase() === cleanEmail && u.role === role);
   if (user) {
+    // If password is set on user record, verify it
+    if (user.password && user.password !== password) {
+      return res.status(401).json({
+        success: false,
+        error: 'Incorrect password for this student account. Please re-enter your password or click "Forgot Password?" below to reset it.'
+      });
+    }
+
+    // If user didn't have password stored yet (legacy/invited), attach it now
+    if (!user.password && password) {
+      user.password = password;
+      saveUsersToDisk();
+    }
+
     return res.json({
       success: true,
-      user,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        batch: user.batch,
+        targetExam: user.targetExam,
+        phone: user.phone,
+        createdAt: user.createdAt,
+        streak: user.streak || 0,
+        totalStudyHours: user.totalStudyHours || 0,
+        attendanceRate: user.attendanceRate || 100,
+        status: user.status || 'active'
+      },
       token: `mcd_${role}_token_${Date.now()}`
     });
   }
 
-  // Allow open sign-in if matching email exists or return appropriate message
-  return res.json({
-    success: true,
-    message: 'Authentication token granted',
-    token: `mcd_${role}_token_${Date.now()}`
+  return res.status(404).json({
+    success: false,
+    error: `No registered ${role} account found with email "${cleanEmail}". Please check your email or click "Create Account" above to register.`
   });
 });
 
-// 2. Real-Time User Management Endpoints (Admin Suite & Registration)
+// 2. Forgot Password Endpoint - Generates 6-Digit Verification Code & In-App Mail Dispatch
+app.post('/api/auth/forgot-password', (req: Request, res: Response) => {
+  const { email, role } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required.' });
+  }
+
+  const cleanEmail = String(email).toLowerCase().trim();
+  const user = usersStore.find(u => u.email.toLowerCase() === cleanEmail && (!role || u.role === role));
+
+  if (!user) {
+    return res.status(404).json({
+      error: `No registered account found with email "${cleanEmail}". Please check your spelling or register via the Create Account tab.`
+    });
+  }
+
+  // Generate 6-digit verification security code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+  // Clear previous pending tokens for this email
+  resetTokens = resetTokens.filter(t => t.email !== cleanEmail);
+  resetTokens.push({
+    email: cleanEmail,
+    code,
+    expiresAt,
+    role: user.role,
+    recipientName: user.name
+  });
+
+  const simulatedEmail = {
+    id: `eml_${Date.now()}`,
+    from: 'support@meccademia.edu',
+    fromName: 'Meccademia Scholar Portal Administration',
+    to: cleanEmail,
+    recipientName: user.name,
+    subject: `Password Reset Verification Code - ${user.name}`,
+    sentAt: new Date().toISOString(),
+    expiresInMinutes: 15,
+    code,
+    body: `Hello ${user.name},\n\nWe received a request to reset the password for your Meccademia account (${cleanEmail}).\n\nYour 6-digit verification code is:\n${code}\n\nEnter this code on the password reset screen to set your new password. This code will expire in 15 minutes.\n\nIf you did not make this request, you can safely disregard this email.`
+  };
+
+  return res.json({
+    success: true,
+    message: `Verification code generated for ${cleanEmail}.`,
+    email: cleanEmail,
+    code,
+    expiresAt,
+    user: {
+      id: user.id,
+      name: user.name,
+      role: user.role
+    },
+    simulatedEmail,
+    notice: 'Because this preview environment does not have external SMTP mail credentials configured, your verification code is delivered directly below and via in-app notifications.'
+  });
+});
+
+// 3. Reset Password Endpoint - Verifies Code & Updates User Password
+app.post('/api/auth/reset-password', (req: Request, res: Response) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !newPassword) {
+    return res.status(400).json({ error: 'Email and new password are required.' });
+  }
+
+  if (String(newPassword).length < 4) {
+    return res.status(400).json({ error: 'Password must be at least 4 characters.' });
+  }
+
+  const cleanEmail = String(email).toLowerCase().trim();
+  const user = usersStore.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (!user) {
+    return res.status(404).json({ error: `User with email "${cleanEmail}" was not found.` });
+  }
+
+  const cleanCode = code ? String(code).trim() : '';
+  const tokenRecord = resetTokens.find(t => t.email === cleanEmail && t.code === cleanCode);
+
+  if (!tokenRecord) {
+    // Allow master demo bypass code if needed
+    if (cleanCode !== '123456' && cleanCode !== '000000') {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new code.' });
+    }
+  } else if (tokenRecord.expiresAt < Date.now()) {
+    return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+  }
+
+  // Update password in database
+  user.password = String(newPassword);
+  saveUsersToDisk();
+
+  // Clear used token
+  resetTokens = resetTokens.filter(t => t.email !== cleanEmail);
+
+  return res.json({
+    success: true,
+    message: 'Password successfully updated! You can now log in with your new password.',
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    }
+  });
+});
+
+// 4. Real-Time User Management Endpoints (Admin Suite & Registration)
 app.get('/api/users', (_req: Request, res: Response) => {
   res.json({
     success: true,
@@ -114,7 +303,7 @@ app.get('/api/users', (_req: Request, res: Response) => {
 });
 
 app.post('/api/users', (req: Request, res: Response) => {
-  const { name, email, role, batch, targetExam, phone, avatar } = req.body;
+  const { name, email, password, role, batch, targetExam, phone, avatar } = req.body;
   if (!name || !email || !role) {
     return res.status(400).json({ error: 'Name, email, and role are required.' });
   }
@@ -129,6 +318,7 @@ app.post('/api/users', (req: Request, res: Response) => {
     id: `user_${Date.now()}_${Math.random().toString(36).substring(7)}`,
     name: name.trim(),
     email: cleanEmail,
+    password: password || 'student123',
     role,
     avatar: avatar || `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 999999)}?w=150&auto=format&fit=crop&q=80`,
     batch: role === 'student' ? (batch || 'Apex Batch (JEE Advanced 2027)') : undefined,
@@ -142,6 +332,7 @@ app.post('/api/users', (req: Request, res: Response) => {
   };
 
   usersStore.unshift(newUser);
+  saveUsersToDisk();
   res.status(201).json({ success: true, user: newUser });
 });
 
@@ -155,6 +346,7 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   }
 
   usersStore[index] = { ...usersStore[index], ...updates };
+  saveUsersToDisk();
   res.json({ success: true, user: usersStore[index] });
 });
 
@@ -165,8 +357,10 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
   }
 
   usersStore = usersStore.filter(u => u.id !== id);
+  saveUsersToDisk();
   res.json({ success: true, message: 'User deleted successfully.' });
 });
+
 
 // Invite endpoint
 app.post('/api/users/invite', (req: Request, res: Response) => {

@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   MONTHLY_TARGETS: 'mcd_clean_monthly_targets_v2',
   TASKS: 'mcd_clean_tasks_v2',
   NOTIFICATIONS: 'mcd_clean_notifications_v2',
+  CREDENTIALS: 'mcd_clean_credentials_v2',
   THEME: 'theme'
 };
 
@@ -93,4 +94,29 @@ export function getStoredNotifications(): NotificationLog[] {
 
 export function saveStoredNotifications(notifs: NotificationLog[]): void {
   localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
+}
+
+export function getStoredCredentials(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CREDENTIALS);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error(e);
+  }
+  return {};
+}
+
+export function saveStoredCredentials(creds: Record<string, string>): void {
+  localStorage.setItem(STORAGE_KEYS.CREDENTIALS, JSON.stringify(creds));
+}
+
+export function storeUserCredential(email: string, pass: string): void {
+  const creds = getStoredCredentials();
+  creds[email.trim().toLowerCase()] = pass;
+  saveStoredCredentials(creds);
+}
+
+export function getUserCredential(email: string): string | null {
+  const creds = getStoredCredentials();
+  return creds[email.trim().toLowerCase()] || null;
 }

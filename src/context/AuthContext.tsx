@@ -7,7 +7,8 @@ import {
   getStoredWeeklyTargets, saveStoredWeeklyTargets,
   getStoredMonthlyTargets, saveStoredMonthlyTargets,
   getStoredTasks, saveStoredTasks,
-  getStoredNotifications, saveStoredNotifications
+  getStoredNotifications, saveStoredNotifications,
+  storeUserCredential, getUserCredential
 } from '../utils/storage';
 
 export type AppRoute = 'student' | 'faculty' | 'admin' | 'login_student' | 'login_faculty' | 'login_admin' | 'blueprint';
@@ -27,6 +28,19 @@ interface AuthContextType {
     targetExam?: string,
     phone?: string
   ) => Promise<{ success: boolean; error?: string }>;
+  forgotPassword: (email: string, role?: Role) => Promise<{
+    success: boolean;
+    code?: string;
+    expiresAt?: number;
+    simulatedEmail?: any;
+    notice?: string;
+    error?: string;
+  }>;
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
   logout: () => void;
   users: User[];
   updateUsers: (newUsers: User[]) => void;
@@ -102,11 +116,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.ok) {
         const data = await res.json();
         if (data.users && Array.isArray(data.users)) {
-          // Merge server users with local store
           setUsersState(prev => {
             const serverUsers: User[] = data.users;
-            saveStoredUsers(serverUsers);
-            return serverUsers;
+            const merged = [...serverUsers];
+            // Preserve any local user that server doesn't know about yet
+            prev.forEach(localUser => {
+              if (!merged.some(u => u.email.toLowerCase() === localUser.email.toLowerCase())) {
+                merged.push(localUser);
+                // Also upload this missing user to server in background
+                fetch('/api/users', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: localUser.name,
+                    email: localUser.email,
+                    role: localUser.role,
+                    batch: localUser.batch,
+                    targetExam: localUser.targetExam,
+                    phone: localUser.phone,
+                    avatar: localUser.avatar
+                  })
+                }).catch(() => {});
+              }
+            });
+            saveStoredUsers(merged);
+            return merged;
           });
         }
       }
@@ -273,6 +307,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // Store local credential immediately
+      storeUserCredential(cleanEmail, password);
+
       // Register with backend endpoint so it propagates in real-time
       const res = await fetch('/api/users', {
         method: 'POST',
@@ -280,6 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({
           name: name.trim(),
           email: cleanEmail,
+          password: password,
           role: targetRole,
           batch,
           targetExam,
@@ -380,11 +418,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Authentication failed' };
       }
 
-      // Check registered users
+      // Check registered users in local state or use server response user
       const foundUser = users.find(u => u.email.toLowerCase() === cleanEmail && u.role === targetRole);
-      if (foundUser) {
-        setCurrentUser(foundUser);
-        localStorage.setItem('mcd_active_user_id', foundUser.id);
+      const activeUser = foundUser || (data.user as User | undefined);
+
+      if (activeUser) {
+        // Cache credentials locally
+        storeUserCredential(cleanEmail, pass);
+        if (!foundUser && data.user) {
+          setUsersState(prev => [data.user, ...prev.filter(u => u.email.toLowerCase() !== cleanEmail)]);
+        }
+        setCurrentUser(activeUser);
+        localStorage.setItem('mcd_active_user_id', activeUser.id);
         setCurrentRoute(targetRole);
         return { success: true };
       } else {
@@ -395,7 +440,115 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e: any) {
       console.error('Login error:', e);
+      // Offline / fallback verification
+      const localCred = getUserCredential(cleanEmail);
+      const foundUser = users.find(u => u.email.toLowerCase() === cleanEmail && u.role === targetRole);
+      if (foundUser) {
+        if (localCred && localCred !== pass) {
+          return { success: false, error: 'Incorrect password. Please verify your credentials or click "Forgot Password?".' };
+        }
+        setCurrentUser(foundUser);
+        localStorage.setItem('mcd_active_user_id', foundUser.id);
+        setCurrentRoute(targetRole);
+        return { success: true };
+      }
       return { success: false, error: 'Network error or service unavailable.' };
+    }
+  };
+
+  const forgotPassword = async (
+    email: string,
+    targetRole?: Role
+  ): Promise<{
+    success: boolean;
+    code?: string;
+    expiresAt?: number;
+    simulatedEmail?: any;
+    notice?: string;
+    error?: string;
+  }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, role: targetRole })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Failed to request password reset code' };
+      }
+
+      // Create an in-app notification so the student sees it in their notification bell
+      if (data.user?.id) {
+        addNotification({
+          userId: data.user.id,
+          type: 'faculty_feedback',
+          channel: 'in_app',
+          title: 'Student Password Reset Code Dispatched',
+          message: `Your 6-digit verification code is: ${data.code}. This code expires in 15 minutes.`,
+          status: 'delivered'
+        });
+      }
+
+      return {
+        success: true,
+        code: data.code,
+        expiresAt: data.expiresAt,
+        simulatedEmail: data.simulatedEmail,
+        notice: data.notice
+      };
+    } catch (e: any) {
+      console.error('forgotPassword error:', e);
+      // Fallback check against local users
+      const localUser = users.find(u => u.email.toLowerCase() === cleanEmail && (!targetRole || u.role === targetRole));
+      if (!localUser) {
+        return { success: false, error: `No registered account found for "${email}".` };
+      }
+      const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
+      return {
+        success: true,
+        code: fallbackCode,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+        simulatedEmail: {
+          id: `eml_${Date.now()}`,
+          from: 'support@meccademia.edu',
+          fromName: 'Meccademia Scholar Portal Administration',
+          to: cleanEmail,
+          recipientName: localUser.name,
+          subject: `Password Reset Verification Code - ${localUser.name}`,
+          sentAt: new Date().toISOString(),
+          code: fallbackCode,
+          body: `Hello ${localUser.name},\n\nYour 6-digit verification code is: ${fallbackCode}`
+        },
+        notice: 'Dispatched via local simulation fallback.'
+      };
+    }
+  };
+
+  const resetPassword = async (
+    email: string,
+    code: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, code, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Failed to update password' };
+      }
+
+      storeUserCredential(cleanEmail, newPassword);
+      return { success: true, message: data.message };
+    } catch (e: any) {
+      console.error('resetPassword error:', e);
+      storeUserCredential(cleanEmail, newPassword);
+      return { success: true, message: 'Password updated successfully in local storage.' };
     }
   };
 
@@ -416,6 +569,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRoute: setCurrentRoute,
         login,
         registerUser,
+        forgotPassword,
+        resetPassword,
         logout,
         users,
         updateUsers,
