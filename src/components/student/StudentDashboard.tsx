@@ -703,10 +703,11 @@ export const StudentDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* HISTORICAL REPORTS TAB */}
+      {/* HISTORICAL REPORTS TAB (Past Week and Past Month Audit) */}
       {activeTab === 'history' && (
         <HistoricalReportsView
           tasks={studentTasks}
+          slots={studentSlots}
           onOpenLogModal={() => setIsTaskModalOpen(true)}
         />
       )}

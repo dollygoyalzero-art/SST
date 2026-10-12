@@ -279,6 +279,14 @@ export const SevenDayScheduleCanvas: React.FC<SevenDayScheduleCanvasProps> = ({
                             {isStudy && slot.topic && (
                               <p className="text-[10px] text-slate-500 truncate mt-0.5">{slot.topic}</p>
                             )}
+
+                            {/* Direct Mentor Comments Display */}
+                            {slot.comments && slot.comments.length > 0 && (
+                              <div className="mt-1.5 text-[10px] text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/40 p-1.5 rounded-lg">
+                                <span className="font-bold">{slot.comments[slot.comments.length - 1].facultyName}: </span>
+                                <span>"{slot.comments[slot.comments.length - 1].comment}"</span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Actions */}

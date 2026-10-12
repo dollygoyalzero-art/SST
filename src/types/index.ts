@@ -30,6 +30,17 @@ export type SlotPriority = 'high' | 'medium' | 'low';
 export type RecurrenceType = 'none' | 'daily' | 'weekdays' | 'weekends' | 'custom_days';
 export type SlotCategory = 'study' | 'school' | 'routine' | 'exercise' | 'personal' | 'sleep';
 
+export interface SlotComment {
+  id: string;
+  facultyId: string;
+  facultyName: string;
+  slotId?: string;
+  targetId?: string;
+  comment: string;
+  type?: 'motivational' | 'task_critique' | 'improvement_plan' | 'approval';
+  createdAt: string;
+}
+
 export interface StudySlot {
   id: string;
   studentId: string;
@@ -47,6 +58,7 @@ export interface StudySlot {
   priority: SlotPriority;
   status: SlotStatus;
   notes?: string;
+  comments?: SlotComment[]; // Direct mentor feedback on this slot
 }
 
 export interface WeeklyTarget {
@@ -63,6 +75,7 @@ export interface WeeklyTarget {
   status: 'in_progress' | 'completed' | 'overdue';
   facultyApproved?: boolean;
   facultyNotes?: string;
+  comments?: SlotComment[];
   createdAt?: string;
 }
 
@@ -98,6 +111,7 @@ export interface FacultyComment {
   facultyId: string;
   facultyName: string;
   studentId: string;
+  slotId?: string;
   taskId?: string;
   targetId?: string;
   type: 'motivational' | 'task_critique' | 'improvement_plan' | 'approval';

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ARCHITECTURE_BLUEPRINT } from '../../data/architectureDocs';
 import {
   BookOpen, Database, Layout, GitFork, Server, FolderTree, Copy,
-  Check, ArrowRight, ShieldCheck, FileCode, CheckCircle2
+  Check, ArrowRight, ShieldCheck, FileCode, CheckCircle2, Moon, Radio
 } from 'lucide-react';
 
 interface ArchitectureViewerProps {
@@ -10,7 +10,7 @@ interface ArchitectureViewerProps {
 }
 
 export const ArchitectureViewer: React.FC<ArchitectureViewerProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'schema' | 'wireframes' | 'flows' | 'api' | 'structure'>('schema');
+  const [activeTab, setActiveTab] = useState<'schema' | 'theme' | 'realtime' | 'wireframes' | 'flows' | 'api' | 'structure'>('schema');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const handleCopy = (text: string, key: string) => {
@@ -30,20 +30,20 @@ export const ArchitectureViewer: React.FC<ArchitectureViewerProps> = ({ onClose 
               <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-black/20 text-white border border-white/20">
                 Official Deliverable Spec
               </span>
-              <span className="text-xs font-mono opacity-80">v1.0.0-PROD</span>
+              <span className="text-xs font-mono opacity-80">v3.0.0-PROD</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black mt-1">
               Architecture, Schemas & Production Design Blueprint
             </h1>
             <p className="text-xs text-amber-100 max-w-2xl mt-1">
-              High-stakes entrance preparation platform for Meecademia Education Institute. Complete specifications for Database Schema, Wireframes, User Flows, REST APIs, and Project Tree.
+              High-stakes entrance preparation platform for Meccademia Education Institute. Includes next-themes specs, Real-Time Admin query logic, Schedule Commenting System, and Historical Reports View.
             </p>
           </div>
 
           {onClose && (
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 hover:bg-amber-100 transition shadow"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 hover:bg-amber-100 transition shadow cursor-pointer"
             >
               Back to Live Application
             </button>
@@ -55,74 +55,98 @@ export const ArchitectureViewer: React.FC<ArchitectureViewerProps> = ({ onClose 
       <div className="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('schema')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
             activeTab === 'schema'
               ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Database className="w-3.5 h-3.5" />
-          <span>1. Database Schema & Rules</span>
+          <span>1. Database Schema</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('theme')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+            activeTab === 'theme'
+              ? 'bg-amber-500 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Moon className="w-3.5 h-3.5" />
+          <span>2. next-themes Spec</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('realtime')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+            activeTab === 'realtime'
+              ? 'bg-amber-500 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Radio className="w-3.5 h-3.5" />
+          <span>3. Real-Time Admin Query</span>
         </button>
 
         <button
           onClick={() => setActiveTab('wireframes')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
             activeTab === 'wireframes'
               ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Layout className="w-3.5 h-3.5" />
-          <span>2. UI Wireframes & Layout Map</span>
+          <span>4. UI Wireframes</span>
         </button>
 
         <button
           onClick={() => setActiveTab('flows')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
             activeTab === 'flows'
               ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <GitFork className="w-3.5 h-3.5" />
-          <span>3. User Flow Diagrams</span>
+          <span>5. User Flows</span>
         </button>
 
         <button
           onClick={() => setActiveTab('api')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
             activeTab === 'api'
               ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Server className="w-3.5 h-3.5" />
-          <span>4. API Route Design</span>
+          <span>6. REST APIs</span>
         </button>
 
         <button
           onClick={() => setActiveTab('structure')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
             activeTab === 'structure'
               ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <FolderTree className="w-3.5 h-3.5" />
-          <span>5. Code Structure Tree</span>
+          <span>7. Project Tree</span>
         </button>
       </div>
 
-      {/* Tab 1: Database Schema & Firebase / Supabase structure */}
+      {/* Tab 1: Database Schema */}
       {activeTab === 'schema' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">
-              Dual-Model Architecture: Relational (PostgreSQL / Supabase) & NoSQL (Firestore)
+              Multi-Model Schema Architecture: Relational (PostgreSQL / Supabase) & NoSQL (Firestore)
             </h3>
             <p className="text-xs text-slate-500 mb-4">
-              All 12 core entity tables mapped with data types, relational foreign keys, performance indexes, and strict row-level security.
+              All core entity tables mapped with data types, foreign keys, and Schedule Commenting subcollections.
             </p>
 
             <div className="space-y-4">
@@ -138,213 +162,279 @@ export const ArchitectureViewer: React.FC<ArchitectureViewerProps> = ({ onClose 
                     </div>
                     <button
                       onClick={() => handleCopy(JSON.stringify(col.fields, null, 2), col.name)}
-                      className="text-xs p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
-                      title="Copy schema fields"
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1 cursor-pointer"
                     >
                       {copiedKey === col.name ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey === col.name ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-400 uppercase text-[10px]">
-                        <tr>
-                          <th className="py-2 px-3">Field / Column Name</th>
-                          <th className="py-2 px-3">Data Type & Constraint</th>
-                          <th className="py-2 px-3">Description & Relational Scope</th>
+                  <div className="p-3 bg-white dark:bg-slate-900 overflow-x-auto">
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead>
+                        <tr className="text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                          <th className="pb-2">Field</th>
+                          <th className="pb-2">Type</th>
+                          <th className="pb-2">Description</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {col.fields.map(f => (
-                          <tr key={f.name} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                            <td className="py-2 px-3 font-mono font-semibold text-slate-900 dark:text-slate-100">{f.name}</td>
-                            <td className="py-2 px-3 font-mono text-purple-600 dark:text-purple-400">{f.type}</td>
-                            <td className="py-2 px-3 text-slate-500">{f.desc}</td>
+                          <tr key={f.name}>
+                            <td className="py-1.5 font-bold text-slate-800 dark:text-slate-200">{f.name}</td>
+                            <td className="py-1.5 text-indigo-600 dark:text-indigo-400">{f.type}</td>
+                            <td className="py-1.5 text-slate-500 font-sans">{f.desc}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-
-                  {col.indexes && (
-                    <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 text-[11px] font-mono text-slate-500">
-                      Indexes: {col.indexes.join(' ')}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Firestore Security Rules Block */}
-          <div className="bg-slate-950 text-slate-200 rounded-2xl p-5 border border-slate-800 shadow-xl font-mono text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-              <div className="flex items-center space-x-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="font-bold text-white">firestore.rules (Production RBAC & Isolation)</span>
+      {/* Tab 2: next-themes Specification */}
+      {activeTab === 'theme' && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-6 text-xs">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
+              Functional Dark/Light Mode with next-themes
+            </h3>
+            <p className="text-slate-500">
+              The required implementation includes the ThemeProvider wrapper in Next.js layout, class dark mode configuration in Tailwind, and the ThemeToggle component.
+            </p>
+          </div>
+
+          <div className="space-y-4 font-mono">
+            <div className="bg-slate-950 text-slate-200 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-amber-400 font-bold font-sans">1. Next.js App Router: app/layout.tsx wrapper</span>
+                <button
+                  onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.themeProviderSpec.layoutCode, 'theme_layout')}
+                  className="text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  {copiedKey === 'theme_layout' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'theme_layout' ? 'Copied' : 'Copy'}</span>
+                </button>
               </div>
-              <button
-                onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.databaseSchema.firestoreSecurityRules, 'rules')}
-                className="p-1 rounded text-slate-400 hover:text-white"
-              >
-                {copiedKey === 'rules' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              <pre className="overflow-x-auto text-[11px] text-emerald-300">
+                {ARCHITECTURE_BLUEPRINT.themeProviderSpec.layoutCode}
+              </pre>
             </div>
-            <pre className="overflow-x-auto text-[11px] leading-relaxed text-indigo-300">
-              {ARCHITECTURE_BLUEPRINT.databaseSchema.firestoreSecurityRules}
-            </pre>
+
+            <div className="bg-slate-950 text-slate-200 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-cyan-400 font-bold font-sans">2. tailwind.config.js (darkMode: 'class')</span>
+                <button
+                  onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.themeProviderSpec.tailwindConfig, 'theme_tw')}
+                  className="text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  {copiedKey === 'theme_tw' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'theme_tw' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              <pre className="overflow-x-auto text-[11px] text-cyan-300">
+                {ARCHITECTURE_BLUEPRINT.themeProviderSpec.tailwindConfig}
+              </pre>
+            </div>
+
+            <div className="bg-slate-950 text-slate-200 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-purple-400 font-bold font-sans">3. Working Toggle Button Component (components/theme/ThemeToggle.tsx)</span>
+                <button
+                  onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.themeProviderSpec.toggleComponent, 'theme_comp')}
+                  className="text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  {copiedKey === 'theme_comp' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'theme_comp' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              <pre className="overflow-x-auto text-[11px] text-purple-300">
+                {ARCHITECTURE_BLUEPRINT.themeProviderSpec.toggleComponent}
+              </pre>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tab 2: Wireframes & Layout Map */}
+      {/* Tab 3: Real-Time Admin Query Specification */}
+      {activeTab === 'realtime' && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-6 text-xs">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
+              Real-Time Admin Suite Query & Broadcast Logic
+            </h3>
+            <p className="text-slate-500">
+              Guarantees that when a student registers via a shared link, they instantly appear on the Admin's screen.
+            </p>
+          </div>
+
+          <div className="space-y-4 font-mono">
+            <div className="bg-slate-950 text-slate-200 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-amber-400 font-bold font-sans">Firebase Firestore onSnapshot Listener</span>
+                <button
+                  onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.realtimeAdminSpec.firestoreQuery, 'rt_fs')}
+                  className="text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  {copiedKey === 'rt_fs' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'rt_fs' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              <pre className="overflow-x-auto text-[11px] text-emerald-300">
+                {ARCHITECTURE_BLUEPRINT.realtimeAdminSpec.firestoreQuery}
+              </pre>
+            </div>
+
+            <div className="bg-slate-950 text-slate-200 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-cyan-400 font-bold font-sans">Supabase Postgres Realtime Subscription</span>
+                <button
+                  onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.realtimeAdminSpec.supabaseQuery, 'rt_sb')}
+                  className="text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  {copiedKey === 'rt_sb' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'rt_sb' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              <pre className="overflow-x-auto text-[11px] text-cyan-300">
+                {ARCHITECTURE_BLUEPRINT.realtimeAdminSpec.supabaseQuery}
+              </pre>
+            </div>
+
+            <div className="bg-slate-950 text-slate-200 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-indigo-400 font-bold font-sans">Express REST API (server.ts)</span>
+                <button
+                  onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.realtimeAdminSpec.expressApi, 'rt_exp')}
+                  className="text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  {copiedKey === 'rt_exp' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'rt_exp' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              <pre className="overflow-x-auto text-[11px] text-amber-300">
+                {ARCHITECTURE_BLUEPRINT.realtimeAdminSpec.expressApi}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 4: UI Wireframes */}
       {activeTab === 'wireframes' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Student Login */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-2 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-sm text-indigo-600 dark:text-indigo-400">1. Student Login Screen</span>
-              <span className="font-mono text-[10px] text-slate-400">/login/student</span>
-            </div>
-            <p className="text-slate-500">{ARCHITECTURE_BLUEPRINT.wireframes.studentLoginScreen.purpose}</p>
-            <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-              {ARCHITECTURE_BLUEPRINT.wireframes.studentLoginScreen.layout.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm text-xs space-y-2">
+            <h4 className="font-bold text-indigo-600 dark:text-indigo-400 text-sm">Student Dashboard & Schedule Canvas</h4>
+            <p className="text-slate-600 dark:text-slate-300">
+              7-Day 24-Hour Schedule Canvas supporting study & routine blocks, direct mentor comments, Recharts KPI velocity graphs, target tracker, and historical reports view.
+            </p>
           </div>
 
-          {/* Faculty Login */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-2 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">2. Faculty Login Screen</span>
-              <span className="font-mono text-[10px] text-slate-400">/login/faculty</span>
-            </div>
-            <p className="text-slate-500">{ARCHITECTURE_BLUEPRINT.wireframes.facultyLoginScreen.purpose}</p>
-            <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-              {ARCHITECTURE_BLUEPRINT.wireframes.facultyLoginScreen.layout.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
+          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm text-xs space-y-2">
+            <h4 className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">Faculty Mentor & Schedule Commenting</h4>
+            <p className="text-slate-600 dark:text-slate-300">
+              Inspect assigned mentees, claim unassigned students, approve weekly quotas, and leave text comments directly on individual schedule cards and targets.
+            </p>
           </div>
 
-          {/* Admin Login */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-2 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">3. Admin Login Screen</span>
-              <span className="font-mono text-[10px] text-slate-400">/login/admin</span>
-            </div>
-            <p className="text-slate-500">{ARCHITECTURE_BLUEPRINT.wireframes.adminLoginScreen.purpose}</p>
-            <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-              {ARCHITECTURE_BLUEPRINT.wireframes.adminLoginScreen.layout.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
+          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm text-xs space-y-2">
+            <h4 className="font-bold text-amber-600 dark:text-amber-400 text-sm">Admin Command Suite</h4>
+            <p className="text-slate-600 dark:text-slate-300">
+              Real-time directory auto-fetching newly registered students and faculty, user CRUD, email/WhatsApp invites, and mentorship assignment matrix.
+            </p>
           </div>
 
-          {/* Student Dashboard Layout */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-2 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-sm text-purple-600 dark:text-purple-400">4. Main Student Dashboard</span>
-              <span className="font-mono text-[10px] text-slate-400">/dashboard/student</span>
-            </div>
-            <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-              {ARCHITECTURE_BLUEPRINT.wireframes.studentDashboard.sections.map((sec, i) => (
-                <li key={i}>{sec}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Faculty Dashboard Layout */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-2 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-sm text-teal-600 dark:text-teal-400">5. Faculty Dashboard</span>
-              <span className="font-mono text-[10px] text-slate-400">/dashboard/faculty</span>
-            </div>
-            <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-              {ARCHITECTURE_BLUEPRINT.wireframes.facultyDashboard.sections.map((sec, i) => (
-                <li key={i}>{sec}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Admin Dashboard Layout */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-2 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-sm text-amber-600 dark:text-amber-400">6. Admin Dashboard</span>
-              <span className="font-mono text-[10px] text-slate-400">/dashboard/admin</span>
-            </div>
-            <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-              {ARCHITECTURE_BLUEPRINT.wireframes.adminDashboard.sections.map((sec, i) => (
-                <li key={i}>{sec}</li>
-              ))}
-            </ul>
+          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm text-xs space-y-2">
+            <h4 className="font-bold text-purple-600 dark:text-purple-400 text-sm">Student History & Reports View</h4>
+            <p className="text-slate-600 dark:text-slate-300">
+              Filter by Past Week and Past Month to review completed schedules and task durations, subject distribution charts, and mentor notes.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Tab 3: User Flow Diagrams */}
+      {/* Tab 5: User Flows */}
       {activeTab === 'flows' && (
-        <div className="space-y-6">
-          {ARCHITECTURE_BLUEPRINT.userFlows.map((flow, idx) => (
-            <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
-              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-xs">
-                  {idx + 1}
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{flow.name}</h3>
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm text-xs space-y-3">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">1. Student Open Registration & Live Admin Detection</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-indigo-600 block mb-1">Step 1</span>
+                Student registers via open registration link (any email domain).
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {flow.steps.map((step, sIdx) => (
-                  <div key={sIdx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs">
-                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
-                      Step {sIdx + 1}
-                    </span>
-                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{step}</p>
-                  </div>
-                ))}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-indigo-600 block mb-1">Step 2</span>
+                Backend receives POST /api/users, saves user, and broadcasts change.
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-indigo-600 block mb-1">Step 3</span>
+                Admin Dashboard onSnapshot/polling receives new user and instantly displays card.
               </div>
             </div>
-          ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm text-xs space-y-3">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">2. Schedule Commenting Flow</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-emerald-600 block mb-1">Step 1</span>
+                Faculty opens mentee daily/weekly schedule slots.
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-emerald-600 block mb-1">Step 2</span>
+                Clicks "Comment on Slot", enters text feedback and chooses category tag.
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-emerald-600 block mb-1">Step 3</span>
+                Comment saved to slot; student receives WhatsApp alert and sees comment on canvas!
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Tab 4: API Route Design */}
+      {/* Tab 6: REST APIs */}
       {activeTab === 'api' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-6">
-          {ARCHITECTURE_BLUEPRINT.apiRoutes.map((cat, i) => (
-            <div key={i} className="space-y-2">
-              <h3 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                {cat.category}
-              </h3>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                {cat.routes.map((r, rIdx) => (
-                  <div key={rIdx} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs bg-slate-50/30 dark:bg-slate-800/20">
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] ${
-                        r.method === 'GET' ? 'bg-blue-100 text-blue-700' :
-                        r.method === 'POST' ? 'bg-emerald-100 text-emerald-700' :
-                        r.method === 'PATCH' || r.method === 'PUT' ? 'bg-amber-100 text-amber-700' :
-                        'bg-rose-100 text-rose-700'
-                      }`}>
-                        {r.method}
-                      </span>
-                      <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{r.path}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-500 text-[11px] block">{r.desc}</span>
-                      <span className="font-mono text-[10px] text-slate-400">{r.payload}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4 text-xs">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-0.5 rounded font-mono font-bold bg-blue-100 text-blue-700">GET</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-slate-100">/api/users</span>
             </div>
-          ))}
+            <p className="text-slate-500 mt-1">Fetches all registered students and faculty in real-time for Admin Suite.</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-0.5 rounded font-mono font-bold bg-emerald-100 text-emerald-700">POST</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-slate-100">/api/auth/login</span>
+            </div>
+            <p className="text-slate-500 mt-1">Authenticates users. Explicit backend check for hardcoded administrator credentials.</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-0.5 rounded font-mono font-bold bg-emerald-100 text-emerald-700">POST</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-slate-100">/api/users</span>
+            </div>
+            <p className="text-slate-500 mt-1">Registers new student or faculty open to any email domain.</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-0.5 rounded font-mono font-bold bg-amber-100 text-amber-700">PUT</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-slate-100">/api/users/:id</span>
+            </div>
+            <p className="text-slate-500 mt-1">Updates user details or reassigns faculty mentorship.</p>
+          </div>
         </div>
       )}
 
-      {/* Tab 5: Code Structure Tree */}
+      {/* Tab 7: Code Structure Tree */}
       {activeTab === 'structure' && (
         <div className="bg-slate-950 text-slate-200 rounded-2xl p-5 border border-slate-800 shadow-xl font-mono text-xs">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
@@ -354,7 +444,7 @@ export const ArchitectureViewer: React.FC<ArchitectureViewerProps> = ({ onClose 
             </div>
             <button
               onClick={() => handleCopy(ARCHITECTURE_BLUEPRINT.codeStructure, 'code_struct')}
-              className="p-1 text-slate-400 hover:text-white"
+              className="p-1 text-slate-400 hover:text-white cursor-pointer"
             >
               {copiedKey === 'code_struct' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>

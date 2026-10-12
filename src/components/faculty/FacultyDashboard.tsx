@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   UserCheck, Users, Flame, Clock, Target, AlertTriangle, CheckCircle2,
-  MessageSquare, UserPlus, Shield, ChevronRight, Check, X, Sparkles, Send
+  MessageSquare, UserPlus, Shield, ChevronRight, Check, X, Sparkles, Send,
+  Calendar, MessageCircle, PlusCircle, CheckCheck
 } from 'lucide-react';
-import { User, StudySlot, WeeklyTarget, TaskLog } from '../../types';
+import { User, StudySlot, WeeklyTarget, TaskLog, SlotComment } from '../../types';
 
 export const FacultyDashboard: React.FC = () => {
   const {
-    currentUser, users, updateUsers, slots, weeklyTargets, updateWeeklyTargets,
-    tasks, updateTasks, addNotification
+    currentUser, users, updateUsers, slots, updateSlots, weeklyTargets, updateWeeklyTargets,
+    addSlotComment, addTargetComment, addNotification
   } = useAuth();
 
   const faculty = (currentUser && currentUser.role === 'faculty')
@@ -17,7 +18,7 @@ export const FacultyDashboard: React.FC = () => {
     : (users.find(u => u.role === 'faculty') || {
         id: 'faculty_default',
         name: 'Faculty Educator',
-        email: 'faculty@example.com',
+        email: 'faculty@meecademia.edu',
         role: 'faculty' as const,
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
         createdAt: new Date().toISOString().split('T')[0],
@@ -33,9 +34,19 @@ export const FacultyDashboard: React.FC = () => {
   const unassignedStudents = users.filter(u => u.role === 'student' && !u.assignedFacultyId);
 
   const [selectedStudent, setSelectedStudent] = useState<User | null>(assignedMentees[0] || null);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackType, setFeedbackType] = useState<'motivational' | 'task_critique' | 'improvement_plan'>('motivational');
-  const [feedbackSent, setFeedbackSent] = useState(false);
+
+  // Active commenting on a specific slot or target
+  const [activeCommentingSlotId, setActiveCommentingSlotId] = useState<string | null>(null);
+  const [slotCommentText, setSlotCommentText] = useState('');
+  const [slotCommentType, setSlotCommentType] = useState<SlotComment['type']>('improvement_plan');
+
+  const [activeCommentingTargetId, setActiveCommentingTargetId] = useState<string | null>(null);
+  const [targetCommentText, setTargetCommentText] = useState('');
+
+  // General feedback states
+  const [generalFeedbackText, setGeneralFeedbackText] = useState('');
+  const [generalFeedbackType, setGeneralFeedbackType] = useState<'motivational' | 'task_critique' | 'improvement_plan'>('motivational');
+  const [generalFeedbackSent, setGeneralFeedbackSent] = useState(false);
 
   // Claim unassigned student handler
   const handleClaimStudent = (studentId: string) => {
@@ -68,7 +79,7 @@ export const FacultyDashboard: React.FC = () => {
         return {
           ...t,
           facultyApproved: approve,
-          facultyNotes: approve ? `Approved by ${faculty.name} on ${new Date().toLocaleDateString()}` : 'Please revise problem selection'
+          facultyNotes: approve ? `Approved by ${faculty.name} on ${new Date().toLocaleDateString()}` : 'Please revise problem count'
         };
       }
       return t;
@@ -87,35 +98,39 @@ export const FacultyDashboard: React.FC = () => {
     }
   };
 
-  // Send feedback comment
-  const handleSendFeedback = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!feedbackText.trim() || !selectedStudent) return;
+  // Submit text comment directly on a specific study slot
+  const handleSubmitSlotComment = (slotId: string) => {
+    if (!slotCommentText.trim()) return;
+    addSlotComment(slotId, slotCommentText.trim(), slotCommentType);
+    setSlotCommentText('');
+    setActiveCommentingSlotId(null);
+  };
 
-    // Attach comment to latest student task
-    const studentTasks = tasks.filter(t => t.studentId === selectedStudent.id);
-    if (studentTasks.length > 0) {
-      const updatedTasks = tasks.map(t => {
-        if (t.id === studentTasks[0].id) {
-          return { ...t, facultyComment: feedbackText.trim() };
-        }
-        return t;
-      });
-      updateTasks(updatedTasks);
-    }
+  // Submit text comment directly on a specific weekly target
+  const handleSubmitTargetComment = (targetId: string) => {
+    if (!targetCommentText.trim()) return;
+    addTargetComment(targetId, targetCommentText.trim(), 'approval');
+    setTargetCommentText('');
+    setActiveCommentingTargetId(null);
+  };
+
+  // Submit general mentorship advice
+  const handleSendGeneralFeedback = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!generalFeedbackText.trim() || !selectedStudent) return;
 
     addNotification({
       userId: selectedStudent.id,
       type: 'faculty_feedback',
       channel: 'whatsapp',
       title: `Mentor Feedback from ${faculty.name}`,
-      message: feedbackText.trim(),
+      message: generalFeedbackText.trim(),
       status: 'delivered'
     });
 
-    setFeedbackSent(true);
-    setFeedbackText('');
-    setTimeout(() => setFeedbackSent(false), 3000);
+    setGeneralFeedbackSent(true);
+    setGeneralFeedbackText('');
+    setTimeout(() => setGeneralFeedbackSent(false), 3000);
   };
 
   // Inspect selected student records
@@ -145,7 +160,7 @@ export const FacultyDashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Department of Physics & Entrance Mentorship • Meecademia Senior Faculty
+                Entrance Exam Academic Mentor • Meccademia Faculty Suite
               </p>
             </div>
           </div>
@@ -215,7 +230,7 @@ export const FacultyDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Main Faculty Mentee Inspection & Feedback Matrix */}
+      {/* Main Faculty Mentee Inspection & Schedule Commenting Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Assigned Mentees List */}
@@ -229,48 +244,53 @@ export const FacultyDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            {assignedMentees.map(mentee => {
-              const isSelected = selectedStudent?.id === mentee.id;
-              const menteeMissed = slots.filter(s => s.studentId === mentee.id && s.status === 'missed').length;
+            {assignedMentees.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-xs">
+                No mentees assigned yet. Claim an unassigned scholar from above or request admin assignment.
+              </div>
+            ) : (
+              assignedMentees.map(mentee => {
+                const isSelected = selectedStudent?.id === mentee.id;
+                const menteeMissed = slots.filter(s => s.studentId === mentee.id && s.status === 'missed').length;
 
-              return (
-                <div
-                  key={mentee.id}
-                  onClick={() => setSelectedStudent(mentee)}
-                  className={`p-3 rounded-xl border transition cursor-pointer ${
-                    isSelected
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <img src={mentee.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                          {mentee.name}
-                        </h4>
-                        {menteeMissed > 0 && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                            {menteeMissed} missed
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 truncate">{mentee.batch}</p>
-                      <div className="flex items-center space-x-3 text-[10px] text-slate-400 mt-1">
-                        <span>Streak: <strong className="text-amber-500">{mentee.streak}d</strong></span>
-                        <span>Hours: <strong className="text-indigo-500">{mentee.totalStudyHours}h</strong></span>
-                        <span>Att: <strong className="text-emerald-500">{mentee.attendanceRate}%</strong></span>
+                return (
+                  <div
+                    key={mentee.id}
+                    onClick={() => setSelectedStudent(mentee)}
+                    className={`p-3 rounded-xl border transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <img src={mentee.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                            {mentee.name}
+                          </h4>
+                          {menteeMissed > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                              {menteeMissed} missed
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">{mentee.batch}</p>
+                        <div className="flex items-center space-x-3 text-[10px] text-slate-400 mt-1">
+                          <span>Streak: <strong className="text-amber-500">{mentee.streak}d</strong></span>
+                          <span>Hours: <strong className="text-indigo-500">{mentee.totalStudyHours}h</strong></span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Right Column (2 spans): Deep Mentee Inspection & Feedback */}
+        {/* Right Column (2 spans): Deep Mentee Inspection & Schedule Commenting System */}
         <div className="lg:col-span-2 space-y-6">
           {selectedStudent ? (
             <>
@@ -317,81 +337,262 @@ export const FacultyDashboard: React.FC = () => {
                     </strong>
                   </div>
                 </div>
+              </div>
 
-                {/* Mentee Daily Slots Preview */}
-                <div className="mt-4">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-2">
-                    Today's Scheduled Slots & Real-Time Status:
-                  </h4>
-                  <div className="space-y-2">
+              {/* SCHEDULE COMMENTING SYSTEM - Daily & Weekly Study Slots */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                      Schedule Commenting System: Daily Study Slots ({studentSlots.length})
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Leave comments directly on individual slots</span>
+                </div>
+
+                {studentSlots.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                    This student has not created any study schedule slots yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
                     {studentSlots.map(slot => (
                       <div
                         key={slot.id}
-                        className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between text-xs"
+                        className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs space-y-2"
                       >
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-slate-600 dark:text-slate-400">
-                            {slot.startTime}-{slot.endTime}
-                          </span>
-                          <span className="font-bold text-slate-900 dark:text-slate-100">{slot.subject}:</span>
-                          <span className="text-slate-600 dark:text-slate-300 truncate max-w-[200px]">{slot.chapter} - {slot.topic}</span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">
+                              {slot.startTime} - {slot.endTime}
+                            </span>
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                              {slot.subject || slot.title}:
+                            </span>
+                            <span className="text-slate-800 dark:text-slate-200">
+                              {slot.chapter ? `${slot.chapter} - ${slot.topic}` : (slot.notes || 'Routine block')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+                              slot.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                              slot.status === 'in_progress' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                              slot.status === 'missed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
+                              'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                            }`}>
+                              {slot.status}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (activeCommentingSlotId === slot.id) {
+                                  setActiveCommentingSlotId(null);
+                                } else {
+                                  setActiveCommentingSlotId(slot.id);
+                                  setSlotCommentText('');
+                                }
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 cursor-pointer flex items-center space-x-1"
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                              <span>{activeCommentingSlotId === slot.id ? 'Cancel' : 'Comment on Slot'}</span>
+                            </button>
+                          </div>
                         </div>
-                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
-                          slot.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                          slot.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                          slot.status === 'missed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-700'
-                        }`}>
-                          {slot.status}
-                        </span>
+
+                        {/* Existing Mentor Comments on this Slot */}
+                        {slot.comments && slot.comments.length > 0 && (
+                          <div className="mt-2 pl-3 border-l-2 border-emerald-500 space-y-1.5 pt-1">
+                            {slot.comments.map(c => (
+                              <div key={c.id} className="text-[11px] text-slate-700 dark:text-slate-300 bg-emerald-50/60 dark:bg-emerald-950/20 p-2 rounded-lg">
+                                <div className="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300">
+                                  <span>{c.facultyName} (Mentor)</span>
+                                  <span className="font-normal text-[10px] text-slate-400">{c.createdAt}</span>
+                                </div>
+                                <p className="mt-0.5">{c.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Inline Comment Input Box */}
+                        {activeCommentingSlotId === slot.id && (
+                          <div className="mt-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-300 dark:border-emerald-800 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-300">
+                                Direct Feedback for {slot.subject || 'this slot'}:
+                              </span>
+                              <div className="flex space-x-1">
+                                {(['motivational', 'task_critique', 'improvement_plan'] as const).map(tag => (
+                                  <button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => setSlotCommentType(tag)}
+                                    className={`px-1.5 py-0.5 text-[9px] uppercase rounded font-bold cursor-pointer ${
+                                      slotCommentType === tag ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                    }`}
+                                  >
+                                    {tag.replace('_', ' ')}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <input
+                              type="text"
+                              value={slotCommentText}
+                              onChange={e => setSlotCommentText(e.target.value)}
+                              placeholder="e.g. Focus on solving high-yield previous year questions in this block..."
+                              className="w-full p-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSubmitSlotComment(slot.id);
+                              }}
+                            />
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => setActiveCommentingSlotId(null)}
+                                className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSubmitSlotComment(slot.id)}
+                                className="px-3 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center space-x-1 cursor-pointer"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>Post Comment</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Target Approvals & Sign-Offs */}
+              {/* SCHEDULE COMMENTING SYSTEM - Weekly & Monthly Targets */}
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-3">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                  Target Review & Faculty Approval:
-                </h4>
-                <div className="space-y-3">
-                  {studentTargets.map(target => (
-                    <div
-                      key={target.id}
-                      className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                    >
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400">
-                          {target.subject} • {target.chapter}
-                        </span>
-                        <h5 className="font-bold text-slate-900 dark:text-slate-100">{target.targetMetric}</h5>
-                        <p className="text-[11px] text-slate-500">
-                          Progress: {target.completedCount} / {target.assignedCount} {target.unit} ({Math.round((target.completedCount / target.assignedCount) * 100)}%)
-                        </p>
-                      </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4 text-purple-600" />
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                      Target Approvals & Comments ({studentTargets.length})
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Review targets & sign off</span>
+                </div>
 
-                      <div className="flex items-center space-x-2">
-                        {target.facultyApproved ? (
-                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1 bg-emerald-50 dark:bg-emerald-950 px-2 py-1 rounded-lg">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Approved by You</span>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleApproveTarget(target.id, true)}
-                            className="px-3 py-1.5 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer flex items-center space-x-1"
-                          >
-                            <Check className="w-3 h-3" />
-                            <span>Approve Target</span>
-                          </button>
+                {studentTargets.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                    No weekly targets set by this student yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {studentTargets.map(target => (
+                      <div
+                        key={target.id}
+                        className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 space-y-2 text-xs"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400">
+                              {target.subject} • {target.chapter}
+                            </span>
+                            <h5 className="font-bold text-slate-900 dark:text-slate-100">{target.targetMetric}</h5>
+                            <p className="text-[11px] text-slate-500">
+                              Progress: {target.completedCount} / {target.assignedCount} {target.unit} ({Math.round((target.completedCount / target.assignedCount) * 100)}%)
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            {target.facultyApproved ? (
+                              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-lg">
+                                <CheckCheck className="w-3.5 h-3.5" />
+                                <span>Approved</span>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleApproveTarget(target.id, true)}
+                                className="px-3 py-1.5 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer flex items-center space-x-1"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Approve Target</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                if (activeCommentingTargetId === target.id) {
+                                  setActiveCommentingTargetId(null);
+                                } else {
+                                  setActiveCommentingTargetId(target.id);
+                                  setTargetCommentText('');
+                                }
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition cursor-pointer flex items-center space-x-1"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Comment</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Existing Target Comments */}
+                        {target.comments && target.comments.length > 0 && (
+                          <div className="mt-2 pl-3 border-l-2 border-purple-500 space-y-1 pt-1">
+                            {target.comments.map(c => (
+                              <div key={c.id} className="text-[11px] text-slate-700 dark:text-slate-300 bg-purple-50/60 dark:bg-purple-950/20 p-2 rounded-lg">
+                                <div className="flex items-center justify-between font-bold text-purple-800 dark:text-purple-300">
+                                  <span>{c.facultyName} (Mentor)</span>
+                                  <span className="font-normal text-[10px] text-slate-400">{c.createdAt}</span>
+                                </div>
+                                <p className="mt-0.5">{c.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Inline Target Comment Input */}
+                        {activeCommentingTargetId === target.id && (
+                          <div className="mt-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-purple-300 dark:border-purple-800 space-y-2">
+                            <span className="font-bold text-[11px] text-purple-700 dark:text-purple-300">
+                              Leave Mentor Advice on this Target:
+                            </span>
+                            <input
+                              type="text"
+                              value={targetCommentText}
+                              onChange={e => setTargetCommentText(e.target.value)}
+                              placeholder="e.g. Ensure you complete 20 pyqs under timed 45-minute exam conditions."
+                              className="w-full p-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSubmitTargetComment(target.id);
+                              }}
+                            />
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => setActiveCommentingTargetId(null)}
+                                className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSubmitTargetComment(target.id)}
+                                className="px-3 py-1 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center space-x-1 cursor-pointer"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>Post Target Comment</span>
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Mentorship Feedback Dispatch Form */}
+              {/* General Mentorship Guidance Dispatch */}
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
                 <div className="flex items-center space-x-2 mb-3">
                   <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
@@ -399,62 +600,62 @@ export const FacultyDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                      Send Direct Mentor Guidance to {selectedStudent.name}
+                      Send Direct Institute Notice to {selectedStudent.name}
                     </h4>
-                    <p className="text-[11px] text-slate-500">Dispatches via In-App notice & WhatsApp Business API</p>
+                    <p className="text-[11px] text-slate-500">Dispatches via in-app alert & synced WhatsApp notification</p>
                   </div>
                 </div>
 
-                <form onSubmit={handleSendFeedback} className="space-y-3">
+                <form onSubmit={handleSendGeneralFeedback} className="space-y-3">
                   <div className="flex space-x-2">
                     <button
                       type="button"
-                      onClick={() => setFeedbackType('motivational')}
-                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition ${
-                        feedbackType === 'motivational' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                      onClick={() => setGeneralFeedbackType('motivational')}
+                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition cursor-pointer ${
+                        generalFeedbackType === 'motivational' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
                       }`}
                     >
                       Motivational Note
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFeedbackType('task_critique')}
-                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition ${
-                        feedbackType === 'task_critique' ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                      onClick={() => setGeneralFeedbackType('task_critique')}
+                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition cursor-pointer ${
+                        generalFeedbackType === 'task_critique' ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
                       }`}
                     >
-                      Missed Task Critique
+                      Missed Slot Review
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFeedbackType('improvement_plan')}
-                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition ${
-                        feedbackType === 'improvement_plan' ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                      onClick={() => setGeneralFeedbackType('improvement_plan')}
+                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition cursor-pointer ${
+                        generalFeedbackType === 'improvement_plan' ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
                       }`}
                     >
-                      Recovery Plan
+                      Study Plan Adjustment
                     </button>
                   </div>
 
                   <textarea
                     rows={3}
                     required
-                    value={feedbackText}
-                    onChange={e => setFeedbackText(e.target.value)}
-                    placeholder={`e.g. Great pace on HC Verma problems! However, make sure to recover your missed integration session before Friday's full mock test.`}
+                    value={generalFeedbackText}
+                    onChange={e => setGeneralFeedbackText(e.target.value)}
+                    placeholder={`e.g. You have done well maintaining streak this week. Make sure you don't compromise non-study sleep hours while preparing for Sunday's mock exam.`}
                     className="w-full text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
                   />
 
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-slate-400">
-                      {feedbackSent ? 'Feedback delivered to student WhatsApp!' : 'Immediate push notification'}
+                      {generalFeedbackSent ? 'Guidance dispatched to student!' : 'Direct mentor alert'}
                     </span>
                     <button
                       type="submit"
                       className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl flex items-center space-x-1.5 shadow-sm cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>Dispatch Mentor Feedback</span>
+                      <span>Dispatch Guidance</span>
                     </button>
                   </div>
                 </form>
@@ -464,7 +665,7 @@ export const FacultyDashboard: React.FC = () => {
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
               <Users className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-              <p>Select a mentee from the left list to review their study schedule and provide feedback.</p>
+              <p>Select a mentee from the left list to review their study schedule and provide comments.</p>
             </div>
           )}
         </div>

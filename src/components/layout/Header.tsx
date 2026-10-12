@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { ThemeToggle } from '../theme/ThemeToggle';
 import {
-  GraduationCap, Bell, Moon, Sun, UserCheck, Shield, Mic, BookOpen,
-  LogOut, ChevronDown, CheckCircle2, Clock, Sparkles
+  GraduationCap, Bell, UserCheck, Shield, BookOpen,
+  LogOut, ChevronDown, Clock
 } from 'lucide-react';
 
 interface HeaderProps {
-  onOpenVoiceMentor: () => void;
   onOpenBlueprint: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBlueprint }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenBlueprint }) => {
   const {
-    currentUser, role, currentRoute, setRoute, logout,
-    users, notifications, markNotificationRead, isDarkMode, toggleDarkMode
+    currentUser, currentRoute, setRoute, logout,
+    users, notifications, markNotificationRead
   } = useAuth();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -22,11 +22,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand / Logo */}
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => currentUser ? setRoute(currentUser.role) : setRoute('login_student')}>
+        <div
+          className="flex items-center space-x-3 cursor-pointer"
+          onClick={() => currentUser ? setRoute(currentUser.role) : setRoute('login_student')}
+        >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
             <GraduationCap className="w-6 h-6" />
           </div>
@@ -49,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
             <>
               <button
                 onClick={() => setRoute('student')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 cursor-pointer ${
                   currentRoute === 'student'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -61,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
 
               <button
                 onClick={() => setRoute('faculty')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 cursor-pointer ${
                   currentRoute === 'faculty'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -73,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
 
               <button
                 onClick={() => setRoute('admin')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 cursor-pointer ${
                   currentRoute === 'admin'
                     ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -88,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
           {/* Architecture Blueprint Button */}
           <button
             onClick={onOpenBlueprint}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 border ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 border cursor-pointer ${
               currentRoute === 'blueprint'
                 ? 'bg-amber-500 text-white border-amber-600'
                 : 'border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40'
@@ -101,30 +104,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
 
         {/* Right Action Icons */}
         <div className="flex items-center space-x-2.5">
-          {/* Gemini-3.8-Live Voice Mentor Trigger */}
-          <button
-            onClick={onOpenVoiceMentor}
-            title="AI Voice Study Mentor (Gemini 3.8 Live API)"
-            className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm hover:from-purple-700 hover:to-indigo-700 transition"
-          >
-            <Mic className="w-3.5 h-3.5 animate-pulse text-amber-300" />
-            <span className="hidden sm:inline">Voice Mentor</span>
-          </button>
-
-          {/* Dark / Light Mode Toggle */}
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-          </button>
+          {/* Functional Dark/Light Mode using next-themes */}
+          <ThemeToggle />
 
           {/* Notifications Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 relative transition"
+              className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 relative transition cursor-pointer"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -184,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-2 pl-2 pr-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                className="flex items-center space-x-2 pl-2 pr-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <img
                   src={currentUser.avatar}
@@ -225,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
                             setRoute(u.role);
                             setShowUserMenu(false);
                           }}
-                          className={`w-full text-left px-2 py-1.5 rounded-md flex items-center space-x-2 transition ${
+                          className={`w-full text-left px-2 py-1.5 rounded-md flex items-center space-x-2 transition cursor-pointer ${
                             u.id === currentUser.id
                               ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-semibold'
                               : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -247,7 +234,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
                         setRoute('login_student');
                         setShowUserMenu(false);
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center space-x-2"
+                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center space-x-2 cursor-pointer"
                     >
                       <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
                       <span>View Student Login Page</span>
@@ -257,7 +244,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
                         setRoute('login_faculty');
                         setShowUserMenu(false);
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center space-x-2"
+                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center space-x-2 cursor-pointer"
                     >
                       <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
                       <span>View Faculty Login Page</span>
@@ -267,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
                         setRoute('login_admin');
                         setShowUserMenu(false);
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center space-x-2"
+                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center space-x-2 cursor-pointer"
                     >
                       <Shield className="w-3.5 h-3.5 text-slate-500" />
                       <span>View Admin Login Page</span>
@@ -277,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
                         logout();
                         setShowUserMenu(false);
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                      className="w-full text-left px-2 py-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 flex items-center space-x-2 cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Sign Out</span>
@@ -290,7 +277,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenVoiceMentor, onOpenBluepri
             <div className="flex items-center space-x-1.5">
               <button
                 onClick={() => setRoute('login_student')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition cursor-pointer"
               >
                 Sign In
               </button>

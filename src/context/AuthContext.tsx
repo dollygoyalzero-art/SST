@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Role, StudySlot, WeeklyTarget, MonthlyTarget, TaskLog, NotificationLog } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useTheme } from '../components/theme/ThemeProvider';
+import { User, Role, StudySlot, WeeklyTarget, MonthlyTarget, TaskLog, NotificationLog, SlotComment } from '../types';
 import {
   getStoredUsers, saveStoredUsers,
   getStoredSlots, saveStoredSlots,
@@ -29,8 +30,12 @@ interface AuthContextType {
   logout: () => void;
   users: User[];
   updateUsers: (newUsers: User[]) => void;
+  fetchUsers: () => Promise<void>;
+  isSyncingUsers: boolean;
   slots: StudySlot[];
   updateSlots: (newSlots: StudySlot[]) => void;
+  addSlotComment: (slotId: string, commentText: string, type?: SlotComment['type']) => void;
+  addTargetComment: (targetId: string, commentText: string, type?: SlotComment['type']) => void;
   weeklyTargets: WeeklyTarget[];
   updateWeeklyTargets: (newTargets: WeeklyTarget[]) => void;
   monthlyTargets: MonthlyTarget[];
@@ -47,7 +52,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [users, setUsersState] = useState<User[]>(getStoredUsers);
+  const [isSyncingUsers, setIsSyncingUsers] = useState<boolean>(false);
   const [slots, setSlotsState] = useState<StudySlot[]>(getStoredSlots);
   const [weeklyTargets, setWeeklyTargetsState] = useState<WeeklyTarget[]>(getStoredWeeklyTargets);
   const [monthlyTargets, setMonthlyTargetsState] = useState<MonthlyTarget[]>(getStoredMonthlyTargets);
@@ -59,6 +66,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const savedId = localStorage.getItem('mcd_active_user_id');
       if (savedId) {
+        if (savedId === 'admin_1') {
+          return {
+            id: 'admin_1',
+            name: 'Administrator',
+            email: 'ssachh2@gmail.com',
+            role: 'admin',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            createdAt: '2026-01-10',
+            streak: 0,
+            totalStudyHours: 0,
+            attendanceRate: 100,
+            status: 'active'
+          };
+        }
         const list = getStoredUsers();
         return list.find(u => u.id === savedId) || null;
       }
@@ -73,27 +94,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'login_student';
   });
 
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+  // Real-time synchronization of users from the server (Real-Time Admin Suite)
+  const fetchUsers = useCallback(async () => {
     try {
-      const stored = localStorage.getItem('theme');
-      if (stored) return stored === 'dark';
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    } catch {
-      return false;
+      setIsSyncingUsers(true);
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users && Array.isArray(data.users)) {
+          // Merge server users with local store
+          setUsersState(prev => {
+            const serverUsers: User[] = data.users;
+            saveStoredUsers(serverUsers);
+            return serverUsers;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Real-time sync falling back to local storage cache:', err);
+    } finally {
+      setIsSyncingUsers(false);
     }
-  });
+  }, []);
 
+  // Poll users from backend periodically so newly registered students instantly appear on Admin's screen
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 4000);
+    return () => clearInterval(interval);
+  }, [fetchUsers]);
 
-  const toggleDarkMode = () => setIsDarkMode(prev => !prev);
+  const isDarkMode = resolvedTheme === 'dark';
+  const toggleDarkMode = () => {
+    setTheme(isDarkMode ? 'light' : 'dark');
+  };
 
   const updateUsers = (newUsers: User[]) => {
     setUsersState(newUsers);
@@ -142,6 +176,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveStoredNotifications(updated);
   };
 
+  // Schedule Commenting System: Mentors add text comments directly to specific study slots
+  const addSlotComment = (slotId: string, commentText: string, type: SlotComment['type'] = 'motivational') => {
+    if (!currentUser || !commentText.trim()) return;
+
+    const newComment: SlotComment = {
+      id: `comment_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      facultyId: currentUser.id,
+      facultyName: currentUser.name,
+      slotId,
+      comment: commentText.trim(),
+      type,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    let targetStudentId = '';
+    const updatedSlots = slots.map(s => {
+      if (s.id === slotId) {
+        targetStudentId = s.studentId;
+        const currentComments = s.comments || [];
+        return { ...s, comments: [...currentComments, newComment] };
+      }
+      return s;
+    });
+
+    updateSlots(updatedSlots);
+
+    if (targetStudentId) {
+      addNotification({
+        userId: targetStudentId,
+        type: 'faculty_feedback',
+        channel: 'whatsapp',
+        title: `Mentor Comment from ${currentUser.name}`,
+        message: commentText.trim(),
+        status: 'delivered'
+      });
+    }
+  };
+
+  // Schedule Commenting System: Mentors add text comments directly to specific weekly targets
+  const addTargetComment = (targetId: string, commentText: string, type: SlotComment['type'] = 'approval') => {
+    if (!currentUser || !commentText.trim()) return;
+
+    const newComment: SlotComment = {
+      id: `comment_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      facultyId: currentUser.id,
+      facultyName: currentUser.name,
+      targetId,
+      comment: commentText.trim(),
+      type,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    let targetStudentId = '';
+    const updatedTargets = weeklyTargets.map(t => {
+      if (t.id === targetId) {
+        targetStudentId = t.studentId;
+        const currentComments = t.comments || [];
+        return {
+          ...t,
+          comments: [...currentComments, newComment],
+          facultyNotes: commentText.trim()
+        };
+      }
+      return t;
+    });
+
+    updateWeeklyTargets(updatedTargets);
+
+    if (targetStudentId) {
+      addNotification({
+        userId: targetStudentId,
+        type: 'target_alert',
+        channel: 'in_app',
+        title: `Target Review from ${currentUser.name}`,
+        message: commentText.trim(),
+        status: 'delivered'
+      });
+    }
+  };
+
   // User Registration - OPEN TO ALL EMAIL DOMAINS (no domain restriction)
   const registerUser = async (
     name: string,
@@ -158,46 +272,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'An account with this email already exists.' };
     }
 
-    const newUser: User = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      name: name.trim(),
-      email: cleanEmail,
-      role: targetRole,
-      avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 999999)}?w=150&auto=format&fit=crop&q=80`,
-      batch: targetRole === 'student' ? (batch || 'General Batch') : undefined,
-      targetExam: targetRole === 'student' ? ((targetExam as any) || 'JEE Advanced') : undefined,
-      phone: phone || '',
-      createdAt: new Date().toISOString().split('T')[0],
-      streak: 0,
-      totalStudyHours: 0,
-      attendanceRate: 100,
-      status: 'active'
-    };
+    try {
+      // Register with backend endpoint so it propagates in real-time
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: cleanEmail,
+          role: targetRole,
+          batch,
+          targetExam,
+          phone
+        })
+      });
 
-    const nextUsers = [...users, newUser];
-    updateUsers(nextUsers);
-    setCurrentUser(newUser);
-    localStorage.setItem('mcd_active_user_id', newUser.id);
-    setCurrentRoute(targetRole);
+      let newUser: User;
+      if (res.ok) {
+        const data = await res.json();
+        newUser = data.user;
+      } else {
+        // Fallback to local creation if server returns an error
+        newUser = {
+          id: `user_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          name: name.trim(),
+          email: cleanEmail,
+          role: targetRole,
+          avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 999999)}?w=150&auto=format&fit=crop&q=80`,
+          batch: targetRole === 'student' ? (batch || 'Apex Batch (JEE Advanced 2027)') : undefined,
+          targetExam: targetRole === 'student' ? ((targetExam as any) || 'JEE Advanced') : undefined,
+          phone: phone || '',
+          createdAt: new Date().toISOString().split('T')[0],
+          streak: 0,
+          totalStudyHours: 0,
+          attendanceRate: 100,
+          status: 'active'
+        };
+      }
 
-    addNotification({
-      userId: newUser.id,
-      type: 'faculty_feedback',
-      channel: 'in_app',
-      title: 'Welcome to Meccademia!',
-      message: `Welcome ${newUser.name}. Your 7-day schedule canvas is ready. Add your daily study and routine slots to begin.`,
-      status: 'delivered'
-    });
+      const nextUsers = [newUser, ...users.filter(u => u.email.toLowerCase() !== cleanEmail)];
+      updateUsers(nextUsers);
+      setCurrentUser(newUser);
+      localStorage.setItem('mcd_active_user_id', newUser.id);
+      setCurrentRoute(targetRole);
 
-    return { success: true };
+      addNotification({
+        userId: newUser.id,
+        type: 'faculty_feedback',
+        channel: 'in_app',
+        title: 'Welcome to Meccademia!',
+        message: `Welcome ${newUser.name}. Your study dashboard is live. Add study and routine slots to start tracking your entrance exam targets.`,
+        status: 'delivered'
+      });
+
+      return { success: true };
+    } catch (e: any) {
+      console.error('Registration error:', e);
+      return { success: false, error: e.message || 'Registration failed' };
+    }
   };
 
+  /**
+   * CRITICAL REQUIREMENT 1:
+   * Explicitly check if the user inputs Email: "ssachh2@gmail.com" and Password: "admin123".
+   * If true, bypass standard DB auth, assign the "Admin" role, and route them to the Admin Dashboard.
+   */
   const login = async (email: string, pass: string, targetRole: Role): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. HARDCODED ADMIN EXPLICIT BYPASS CHECK
+    if (cleanEmail === 'ssachh2@gmail.com' && pass === 'admin123') {
+      const adminUser: User = {
+        id: 'admin_1',
+        name: 'Administrator',
+        email: 'ssachh2@gmail.com',
+        role: 'admin',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        createdAt: '2026-01-10',
+        streak: 0,
+        totalStudyHours: 0,
+        attendanceRate: 100,
+        status: 'active'
+      };
+
+      // Ensure admin exists in user list
+      setUsersState(prev => prev.some(u => u.id === 'admin_1') ? prev : [adminUser, ...prev]);
+      setCurrentUser(adminUser);
+      localStorage.setItem('mcd_active_user_id', adminUser.id);
+      setCurrentRoute('admin');
+      return { success: true };
+    }
+
+    if (targetRole === 'admin') {
+      return { success: false, error: 'Invalid administrator credentials. Access denied.' };
+    }
+
+    // 2. Student & Faculty Authentication
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password: pass, role: targetRole })
+        body: JSON.stringify({ email: cleanEmail, password: pass, role: targetRole })
       });
       const data = await response.json();
 
@@ -205,38 +380,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Authentication failed' };
       }
 
-      // If Admin authenticated
-      if (targetRole === 'admin') {
-        const adminUser = users.find(u => u.role === 'admin') || {
-          id: 'admin_1',
-          name: 'Administrator',
-          email: 'ssachh2@gmail.com',
-          role: 'admin' as Role,
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          createdAt: '2026-01-10',
-          streak: 0,
-          totalStudyHours: 0,
-          attendanceRate: 100,
-          status: 'active' as const
-        };
-        setCurrentUser(adminUser);
-        localStorage.setItem('mcd_active_user_id', adminUser.id);
-        setCurrentRoute('admin');
-        return { success: true };
-      }
-
-      // Student or Faculty login
-      const foundUser = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.role === targetRole);
+      // Check registered users
+      const foundUser = users.find(u => u.email.toLowerCase() === cleanEmail && u.role === targetRole);
       if (foundUser) {
         setCurrentUser(foundUser);
         localStorage.setItem('mcd_active_user_id', foundUser.id);
         setCurrentRoute(targetRole);
         return { success: true };
       } else {
-        return { success: false, error: `No registered ${targetRole} account found with email "${email}". Please register first using the Create Account tab.` };
+        return {
+          success: false,
+          error: `No registered ${targetRole} account found with email "${email}". Please register using the Create Account tab.`
+        };
       }
     } catch (e: any) {
-      console.error(e);
+      console.error('Login error:', e);
       return { success: false, error: 'Network error or service unavailable.' };
     }
   };
@@ -261,8 +419,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         users,
         updateUsers,
+        fetchUsers,
+        isSyncingUsers,
         slots,
         updateSlots,
+        addSlotComment,
+        addTargetComment,
         weeklyTargets,
         updateWeeklyTargets,
         monthlyTargets,
