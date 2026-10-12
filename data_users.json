@@ -1,0 +1,31 @@
+[
+  {
+    "id": "user_kamal_1",
+    "name": "Kamal H",
+    "email": "kamalkashmir@gmail.com",
+    "password": "student123",
+    "role": "student",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+    "batch": "Apex Batch (JEE Advanced 2027)",
+    "targetExam": "JEE Advanced",
+    "phone": "+91 9876543210",
+    "createdAt": "2026-01-12",
+    "streak": 3,
+    "totalStudyHours": 14.5,
+    "attendanceRate": 100,
+    "status": "active"
+  },
+  {
+    "id": "admin_1",
+    "name": "Administrator",
+    "email": "ssachh2@gmail.com",
+    "password": "admin123",
+    "role": "admin",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    "createdAt": "2026-01-10",
+    "streak": 0,
+    "totalStudyHours": 0,
+    "attendanceRate": 100,
+    "status": "active"
+  }
+]

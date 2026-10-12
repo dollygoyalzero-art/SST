@@ -108,40 +108,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'login_student';
   });
 
-  // Real-time synchronization of users from the server (Real-Time Admin Suite)
+  // Role-Based Access Control (RBAC) Route Guard
+  const safeSetRoute = useCallback((route: AppRoute) => {
+    if (currentUser?.role === 'student') {
+      if (route === 'admin' || route === 'faculty' || route === 'login_admin' || route === 'login_faculty') {
+        console.warn('Access denied: Student accounts are restricted to the Student Portal.');
+        setCurrentRoute('student');
+        return;
+      }
+    } else if (currentUser?.role === 'faculty') {
+      if (route === 'admin' || route === 'login_admin') {
+        console.warn('Access denied: Faculty accounts are restricted from the Admin Suite.');
+        setCurrentRoute('faculty');
+        return;
+      }
+    }
+    setCurrentRoute(route);
+  }, [currentUser]);
+
+  // Synchronize route with active user permissions
+  useEffect(() => {
+    if (currentUser?.role === 'student') {
+      if (currentRoute === 'admin' || currentRoute === 'faculty' || currentRoute === 'login_admin' || currentRoute === 'login_faculty') {
+        setCurrentRoute('student');
+      }
+    } else if (currentUser?.role === 'faculty') {
+      if (currentRoute === 'admin' || currentRoute === 'login_admin') {
+        setCurrentRoute('faculty');
+      }
+    }
+  }, [currentUser, currentRoute]);
+
+  // Real-time synchronization of users with the backend database
   const fetchUsers = useCallback(async () => {
     try {
       setIsSyncingUsers(true);
+
+      // 1. Push any local cached users to server sync endpoint
+      const stored = getStoredUsers();
+      if (Array.isArray(stored) && stored.length > 0) {
+        await fetch('/api/users/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ users: stored })
+        }).catch(() => {});
+      }
+
+      // 2. Fetch authoritative user list from server
       const res = await fetch('/api/users');
       if (res.ok) {
         const data = await res.json();
         if (data.users && Array.isArray(data.users)) {
-          setUsersState(prev => {
-            const serverUsers: User[] = data.users;
-            const merged = [...serverUsers];
-            // Preserve any local user that server doesn't know about yet
-            prev.forEach(localUser => {
-              if (!merged.some(u => u.email.toLowerCase() === localUser.email.toLowerCase())) {
-                merged.push(localUser);
-                // Also upload this missing user to server in background
-                fetch('/api/users', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    name: localUser.name,
-                    email: localUser.email,
-                    role: localUser.role,
-                    batch: localUser.batch,
-                    targetExam: localUser.targetExam,
-                    phone: localUser.phone,
-                    avatar: localUser.avatar
-                  })
-                }).catch(() => {});
-              }
-            });
-            saveStoredUsers(merged);
-            return merged;
-          });
+          setUsersState(data.users);
+          saveStoredUsers(data.users);
         }
       }
     } catch (err) {
@@ -154,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Poll users from backend periodically so newly registered students instantly appear on Admin's screen
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(fetchUsers, 4000);
+    const interval = setInterval(fetchUsers, 3000);
     return () => clearInterval(interval);
   }, [fetchUsers]);
 
@@ -170,6 +189,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedCurrent = newUsers.find(u => u.id === currentUser.id);
       if (updatedCurrent) setCurrentUser(updatedCurrent);
     }
+    // Asynchronously sync with server
+    fetch('/api/users/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ users: newUsers })
+    }).catch(err => console.warn('Failed to sync users with server:', err));
   };
 
   const updateSlots = (newSlots: StudySlot[]) => {
@@ -566,7 +591,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         role,
         currentRoute,
-        setRoute: setCurrentRoute,
+        setRoute: safeSetRoute,
         login,
         registerUser,
         forgotPassword,

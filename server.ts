@@ -52,6 +52,25 @@ function loadUsersFromDisk(): any[] {
             status: 'active'
           });
         }
+        // Ensure Kamal H registered student is present
+        if (!parsed.some(u => u.email.toLowerCase() === 'kamalkashmir@gmail.com')) {
+          parsed.unshift({
+            id: 'user_kamal_1',
+            name: 'Kamal H',
+            email: 'kamalkashmir@gmail.com',
+            password: 'student123',
+            role: 'student',
+            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+            batch: 'Apex Batch (JEE Advanced 2027)',
+            targetExam: 'JEE Advanced',
+            phone: '+91 9876543210',
+            createdAt: '2026-01-12',
+            streak: 3,
+            totalStudyHours: 14.5,
+            attendanceRate: 100,
+            status: 'active'
+          });
+        }
         return parsed;
       }
     }
@@ -59,6 +78,22 @@ function loadUsersFromDisk(): any[] {
     console.error('Error loading users from disk:', err);
   }
   return [
+    {
+      id: 'user_kamal_1',
+      name: 'Kamal H',
+      email: 'kamalkashmir@gmail.com',
+      password: 'student123',
+      role: 'student',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      batch: 'Apex Batch (JEE Advanced 2027)',
+      targetExam: 'JEE Advanced',
+      phone: '+91 9876543210',
+      createdAt: '2026-01-12',
+      streak: 3,
+      totalStudyHours: 14.5,
+      attendanceRate: 100,
+      status: 'active'
+    },
     {
       id: SEEDED_ADMIN.id,
       name: SEEDED_ADMIN.name,
@@ -309,9 +344,20 @@ app.post('/api/users', (req: Request, res: Response) => {
   }
 
   const cleanEmail = String(email).toLowerCase().trim();
-  const existing = usersStore.find(u => u.email.toLowerCase() === cleanEmail);
-  if (existing) {
-    return res.status(409).json({ error: 'User with this email already exists.' });
+  const existingIndex = usersStore.findIndex(u => u.email.toLowerCase() === cleanEmail);
+  if (existingIndex !== -1) {
+    // Update existing user with any provided details
+    usersStore[existingIndex] = {
+      ...usersStore[existingIndex],
+      name: name.trim() || usersStore[existingIndex].name,
+      password: password || usersStore[existingIndex].password || 'student123',
+      role: role || usersStore[existingIndex].role,
+      batch: batch || usersStore[existingIndex].batch,
+      targetExam: targetExam || usersStore[existingIndex].targetExam,
+      phone: phone || usersStore[existingIndex].phone
+    };
+    saveUsersToDisk();
+    return res.json({ success: true, user: usersStore[existingIndex] });
   }
 
   const newUser = {
@@ -334,6 +380,50 @@ app.post('/api/users', (req: Request, res: Response) => {
   usersStore.unshift(newUser);
   saveUsersToDisk();
   res.status(201).json({ success: true, user: newUser });
+});
+
+// Bulk User Sync Endpoint - Ensures local clients sync missing users to server
+app.post('/api/users/sync', (req: Request, res: Response) => {
+  const { users: incomingUsers } = req.body;
+  if (!Array.isArray(incomingUsers)) {
+    return res.status(400).json({ error: 'users array is required' });
+  }
+
+  let modified = false;
+  for (const incoming of incomingUsers) {
+    if (!incoming || !incoming.email) continue;
+    const cleanEmail = String(incoming.email).toLowerCase().trim();
+    const existing = usersStore.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!existing) {
+      usersStore.unshift({
+        id: incoming.id || `user_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        name: incoming.name || cleanEmail.split('@')[0],
+        email: cleanEmail,
+        password: incoming.password || 'student123',
+        role: incoming.role || 'student',
+        avatar: incoming.avatar || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+        batch: incoming.batch,
+        targetExam: incoming.targetExam,
+        phone: incoming.phone || '',
+        createdAt: incoming.createdAt || new Date().toISOString().split('T')[0],
+        streak: incoming.streak || 0,
+        totalStudyHours: incoming.totalStudyHours || 0,
+        attendanceRate: incoming.attendanceRate || 100,
+        status: incoming.status || 'active'
+      });
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    saveUsersToDisk();
+  }
+
+  res.json({
+    success: true,
+    total: usersStore.length,
+    users: usersStore
+  });
 });
 
 app.put('/api/users/:id', (req: Request, res: Response) => {

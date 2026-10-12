@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   Shield, Users, UserPlus, Mail, Edit3, Trash2, CheckCircle2,
@@ -17,6 +17,13 @@ export const AdminDashboard: React.FC = () => {
   const [isRealtimeQueryModalOpen, setIsRealtimeQueryModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [copiedQueryKey, setCopiedQueryKey] = useState<string | null>(null);
+
+  // Auto-sync users periodically so any student registering appears instantly on the Admin screen
+  useEffect(() => {
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 3000);
+    return () => clearInterval(interval);
+  }, [fetchUsers]);
 
   // Form states for Add User
   const [newName, setNewName] = useState('');
@@ -51,36 +58,86 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // User CRUD - Add
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newEmail.trim()) return;
 
-    const newUser: User = {
-      id: `user_${Date.now()}`,
-      name: newName.trim(),
-      email: newEmail.trim().toLowerCase(),
-      role: newRole,
-      avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 999999)}?w=150&auto=format&fit=crop&q=80`,
-      batch: newRole === 'student' ? newBatch : undefined,
-      targetExam: newRole === 'student' ? newTargetExam : undefined,
-      phone: newPhone.trim(),
-      createdAt: new Date().toISOString().split('T')[0],
-      streak: 0,
-      totalStudyHours: 0,
-      attendanceRate: 100,
-      status: 'active'
-    };
+    const cleanEmail = newEmail.trim().toLowerCase();
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newName.trim(),
+          email: cleanEmail,
+          password: 'student123',
+          role: newRole,
+          batch: newRole === 'student' ? newBatch : undefined,
+          targetExam: newRole === 'student' ? newTargetExam : undefined,
+          phone: newPhone.trim()
+        })
+      });
 
-    updateUsers([newUser, ...users]);
+      if (res.ok) {
+        const data = await res.json();
+        const next = [data.user, ...users.filter(u => u.email.toLowerCase() !== cleanEmail)];
+        updateUsers(next);
+      } else {
+        const newUser: User = {
+          id: `user_${Date.now()}`,
+          name: newName.trim(),
+          email: cleanEmail,
+          role: newRole,
+          avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 999999)}?w=150&auto=format&fit=crop&q=80`,
+          batch: newRole === 'student' ? newBatch : undefined,
+          targetExam: newRole === 'student' ? newTargetExam : undefined,
+          phone: newPhone.trim(),
+          createdAt: new Date().toISOString().split('T')[0],
+          streak: 0,
+          totalStudyHours: 0,
+          attendanceRate: 100,
+          status: 'active'
+        };
+        updateUsers([newUser, ...users]);
+      }
+    } catch {
+      const newUser: User = {
+        id: `user_${Date.now()}`,
+        name: newName.trim(),
+        email: cleanEmail,
+        role: newRole,
+        avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 999999)}?w=150&auto=format&fit=crop&q=80`,
+        batch: newRole === 'student' ? newBatch : undefined,
+        targetExam: newRole === 'student' ? newTargetExam : undefined,
+        phone: newPhone.trim(),
+        createdAt: new Date().toISOString().split('T')[0],
+        streak: 0,
+        totalStudyHours: 0,
+        attendanceRate: 100,
+        status: 'active'
+      };
+      updateUsers([newUser, ...users]);
+    }
+
     setIsAddUserModalOpen(false);
     setNewName('');
     setNewEmail('');
   };
 
   // User CRUD - Edit
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
+
+    try {
+      await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingUser)
+      });
+    } catch (err) {
+      console.warn('Failed to update user on server:', err);
+    }
 
     const updated = users.map(u => u.id === editingUser.id ? editingUser : u);
     updateUsers(updated);
@@ -88,8 +145,13 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // User CRUD - Delete
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (confirm('Are you sure you want to delete this user from Meccademia database?')) {
+      try {
+        await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Failed to delete user on server:', err);
+      }
       const updated = users.filter(u => u.id !== id);
       updateUsers(updated);
     }
